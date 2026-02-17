@@ -1,3 +1,4 @@
+# Backend configuration variables
 variable "aws_region" {
   description = "AWS region where the backend resources will be created."
   type        = string
