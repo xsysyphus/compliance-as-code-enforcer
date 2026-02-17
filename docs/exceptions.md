@@ -1,23 +1,26 @@
 # Compliance Exceptions Registry
 
-Documente exceções de conformidade aprovadas para evitar falsos positivos e garantir rastreabilidade de auditoria. Cada exceção deve ter dono, justificativa, prazo e evidência de aprovação.
+Document approved compliance exceptions to prevent false positives and maintain a full audit trail. Every exception must have an owner, a justification, an expiry date, and approval evidence.
 
-## Como registrar
-1. Adicione um registro na tabela abaixo.
-2. Tag no recurso Terraform com `Exception = "<id>"` e `ExpiresOn = "YYYY-MM-DD"`.
-3. Inclua `Justification` e `ApprovedBy` nas tags quando aplicável.
-4. Revise e renove/expire no prazo.
+## How to Register an Exception
 
-| ID | Recurso/Stack | Política/Controle | Severidade | Justificativa | Dono | Aprovado por | Expira em | Evidência |
-|----|---------------|-------------------|------------|---------------|------|--------------|-----------|-----------|
-| EX-0001 | _ex.: aws_security_group.bastion_ | SOC2-CC6.6 (SG pública) | HIGH | Acesso de break-glass para migração | time-net | CISO | 2026-03-31 | Change ticket #123 |
+1. Add a record to the table below.
+2. Tag the Terraform resource with `Exception = "<id>"` and `ExpiresOn = "YYYY-MM-DD"`.
+3. Include `Justification` and `ApprovedBy` tags on the resource when applicable.
+4. Review and renew or expire the exception before the deadline.
 
-## Diretrizes
-- Exceções devem ser temporárias (máx. 90 dias para prod; 30 dias para migração).
-- Renovar exige revalidação do risco e nova aprovação.
-- Remover exceções expiradas no próximo ciclo de hardening.
-- Anexar links para tickets (Jira/ServiceNow) e evidências de avaliação de risco.
+| ID | Resource / Stack | Policy / Control | Severity | Justification | Owner | Approved By | Expires On | Evidence |
+|----|------------------|------------------|----------|---------------|-------|-------------|------------|----------|
+| EX-0001 | _e.g. aws_security_group.bastion_ | SOC2-CC6.6 (public SG) | HIGH | Break-glass access during migration | network-team | CISO | 2026-03-31 | Change ticket #123 |
 
-## Revisões trimestrais
-- Responsável: Security/Compliance.
-- Ação: varrer tags `Exception`, comparar com tabela e remover exceções vencidas.
+## Guidelines
+
+- Exceptions must be **temporary**: max 90 days for production, 30 days for migration windows.
+- Renewal requires re-evaluation of the risk and new approval.
+- Remove expired exceptions in the next hardening cycle.
+- Attach links to tickets (Jira, ServiceNow) and risk assessment evidence.
+
+## Quarterly Review
+
+- **Owner**: Security / Compliance team.
+- **Action**: Scan `Exception` tags, cross-reference with this table, and remove any expired entries.
