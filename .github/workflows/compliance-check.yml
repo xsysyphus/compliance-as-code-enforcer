@@ -43,13 +43,13 @@ jobs:
       - name: Verify OPA policies compile
         run: |
           echo "::group::Checking policy compilation"
-          opa check policies/soc2/*.rego
+          opa check policies/soc2/*.rego --v0-compatible
           echo "::endgroup::"
 
       - name: Run OPA unit tests
         run: |
           echo "::group::Running OPA policy tests"
-          opa test policies/ -v
+          opa test policies/ -v --v0-compatible
           echo "::endgroup::"
 
       - name: Scan Terraform files for compliance violations
