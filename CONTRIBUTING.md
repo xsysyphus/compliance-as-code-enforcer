@@ -19,7 +19,7 @@ Thank you for considering contributing to this project! We welcome contributions
    - Package declaration
    - SOC2 control mapping in comments
    - Clear violation messages with remediation guidance
-   - Test cases in `policies/tests/`
+   - Test cases co-located in `policies/soc2/` (e.g. `s3_encryption_test.rego`)
 
 **Example:**
 
@@ -76,8 +76,8 @@ opa test policies/
 terraform fmt -check -recursive
 terraform validate
 
-# Run unit tests
-cd lambda/scanner && pytest tests/
+# Run unit tests (from repo root)
+python3 -m pytest tests/unit/
 ```
 
 ## Code of Conduct

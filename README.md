@@ -132,7 +132,7 @@ compliance-as-code-enforcer/
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/<your-username>/compliance-as-code-enforcer.git
+git clone https://github.com/xsysyphus/compliance-as-code-enforcer.git
 cd compliance-as-code-enforcer
 
 # 2. Install OPA and Conftest
@@ -389,9 +389,6 @@ MIT License - see [LICENSE](LICENSE) file
 
 ## 🙋 Support
 
-- **Issues**: [GitHub Issues](https://github.com/<your-username>/compliance-as-code-enforcer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/<your-username>/compliance-as-code-enforcer/discussions)
+- **Issues**: [GitHub Issues](https://github.com/xsysyphus/compliance-as-code-enforcer/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/xsysyphus/compliance-as-code-enforcer/discussions)
 
----
-
-**Built with ❤️ by DevSecOps Engineers, for Engineers**

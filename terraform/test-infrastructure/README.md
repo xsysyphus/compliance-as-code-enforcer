@@ -216,6 +216,6 @@ If `terraform plan` fails:
 ## Next Steps
 
 After validating policies locally:
-1. Integrate into CI/CD pipeline (see `ci-cd/.github/workflows/`)
+1. Integrate into CI/CD pipeline (see `.github/workflows/`)
 2. Deploy runtime monitoring (see `terraform/runtime-monitoring/`)
 3. Configure auto-remediation for safe violations

@@ -128,7 +128,7 @@ Requires developer intervention (cannot be automated safely):
 
 ```bash
 # Test S3 encryption policy against sample Terraform
-conftest test terraform/test-infrastructure/s3.tf \
+conftest test terraform/test-infrastructure/main.tf \
   --policy policies/soc2/s3_encryption.rego
 
 # Test all SOC2 policies
