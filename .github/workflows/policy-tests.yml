@@ -1,0 +1,105 @@
+name: OPA Policy Tests
+
+on:
+  pull_request:
+    paths:
+      - 'policies/**/*.rego'
+  push:
+    branches:
+      - main
+    paths:
+      - 'policies/**/*.rego'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  test-policies:
+    name: Test OPA Policies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Verify policy syntax
+        run: |
+          echo "::group::Checking OPA policy syntax"
+          opa check policies/soc2/*.rego
+          echo "::endgroup::"
+
+      - name: Run OPA unit tests
+        run: |
+          echo "::group::Running OPA unit tests"
+          opa test policies/ -v --format json > test-results.json
+          opa test policies/ -v
+          echo "::endgroup::"
+
+      - name: Generate test coverage report
+        run: |
+          echo "::group::Generating coverage report"
+          opa test policies/ --coverage --format=json > coverage.json
+
+          # Extract coverage percentage
+          COVERAGE=$(jq -r '.coverage' coverage.json)
+          echo "Coverage: $COVERAGE%"
+
+          # Fail if coverage below 70%
+          if (( $(echo "$COVERAGE < 70.0" | bc -l) )); then
+            echo "::error::Test coverage ($COVERAGE%) is below minimum threshold (70%)"
+            exit 1
+          fi
+
+          echo "::notice::Test coverage: $COVERAGE%"
+          echo "::endgroup::"
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const coverage = JSON.parse(fs.readFileSync('coverage.json', 'utf8'));
+            const tests = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+
+            const passedTests = tests.filter(t => !t.fail).length;
+            const totalTests = tests.length;
+            const coveragePercent = coverage.coverage.toFixed(2);
+
+            const comment = `## 🧪 OPA Policy Test Results
+
+            | Metric | Value |
+            |--------|-------|
+            | Tests Passed | ${passedTests}/${totalTests} |
+            | Coverage | ${coveragePercent}% |
+            | Status | ${passedTests === totalTests ? '✅ PASSED' : '❌ FAILED'} |
+
+            ${passedTests === totalTests ?
+              '### All policy tests passed!' :
+              '### ❌ Some tests failed - review logs above'}
+
+            *Policy tests ensure compliance rules work correctly*
+            `;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opa-test-results
+          path: |
+            test-results.json
+            coverage.json

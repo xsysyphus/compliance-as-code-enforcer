@@ -1,0 +1,13 @@
+# Python dependencies for Compliance-as-Code Enforcer
+
+# Core dependencies
+pyyaml>=6.0.1         # Configuration file parsing
+requests>=2.31.0      # HTTP requests for Ollama and Perplexity APIs
+
+# Optional dependencies for enhanced features
+colorama>=0.4.6       # Colored terminal output (optional but recommended)
+tabulate>=0.9.0       # Pretty table formatting for reports (optional)
+
+# Development dependencies (optional)
+pytest>=7.4.0         # For running tests
+pytest-cov>=4.1.0     # Code coverage for tests

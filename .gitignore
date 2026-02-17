@@ -1,0 +1,91 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.tfplan
+*.tfplan
+*.binary
+**/scanner.zip
+.terraform/
+.terraform.lock.hcl
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets and sensitive files
+*.pem
+*.key
+*.crt
+secrets.yaml
+secrets.json
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# AWS
+.aws/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# OPA
+*.tar.gz
+bundle.tar.gz
+
+# Grafana
+grafana/data/
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+tmp/
+temp/
+.ai-cache/
+
+# Claude Code local settings
+.claude/

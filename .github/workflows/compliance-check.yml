@@ -1,0 +1,278 @@
+name: Compliance Policy Validation
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**/*.tf'
+      - 'policies/**/*.rego'
+      - '.github/workflows/compliance-check.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'terraform/**/*.tf'
+      - 'policies/**/*.rego'
+
+permissions:
+  contents: read
+  pull-requests: write  # Required to comment on PRs
+  checks: write         # Required to create check runs
+
+jobs:
+  policy-validation:
+    name: OPA Policy Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup OPA
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Install Conftest
+        run: |
+          wget https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.48.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+          conftest --version
+
+      - name: Verify OPA policies compile
+        run: |
+          echo "::group::Checking policy compilation"
+          opa check policies/soc2/*.rego
+          echo "::endgroup::"
+
+      - name: Run OPA unit tests
+        run: |
+          echo "::group::Running OPA policy tests"
+          opa test policies/ -v
+          echo "::endgroup::"
+
+      - name: Scan Terraform files for compliance violations
+        id: conftest
+        continue-on-error: true
+        run: |
+          echo "::group::Running Conftest policy validation"
+
+          # Create output directory
+          mkdir -p reports
+
+          # Run conftest and capture output
+          conftest test terraform/**/*.tf \
+            --policy policies/soc2/ \
+            --output json \
+            --all-namespaces > reports/violations.json || true
+
+          # Also generate human-readable output
+          conftest test terraform/**/*.tf \
+            --policy policies/soc2/ \
+            --all-namespaces > reports/violations.txt || true
+
+          echo "::endgroup::"
+
+          # Parse results
+          VIOLATION_COUNT=$(jq '[.[].failures] | flatten | length' reports/violations.json)
+          CRITICAL_COUNT=$(jq '[.[].failures[] | select(.msg | contains("CRITICAL"))] | length' reports/violations.json)
+          HIGH_COUNT=$(jq '[.[].failures[] | select(.msg | contains("HIGH"))] | length' reports/violations.json)
+
+          echo "violation_count=$VIOLATION_COUNT" >> $GITHUB_OUTPUT
+          echo "critical_count=$CRITICAL_COUNT" >> $GITHUB_OUTPUT
+          echo "high_count=$HIGH_COUNT" >> $GITHUB_OUTPUT
+
+          # Display summary
+          echo "::notice::Found $VIOLATION_COUNT total violations ($CRITICAL_COUNT critical, $HIGH_COUNT high)"
+
+          # Exit with error if critical violations found
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "::error::CRITICAL compliance violations detected - blocking deployment"
+            exit 1
+          fi
+
+      - name: Generate compliance report
+        if: always()
+        run: |
+          echo "::group::Generating compliance report"
+
+          cat > reports/summary.md << 'EOF'
+          # 🛡️ Compliance Validation Report
+
+          ## Summary
+
+          | Metric | Count |
+          |--------|-------|
+          | Total Violations | ${{ steps.conftest.outputs.violation_count }} |
+          | 🔴 Critical | ${{ steps.conftest.outputs.critical_count }} |
+          | 🟠 High | ${{ steps.conftest.outputs.high_count }} |
+
+          ## Validation Status
+
+          EOF
+
+          if [ "${{ steps.conftest.outputs.critical_count }}" -gt 0 ]; then
+            cat >> reports/summary.md << 'EOF'
+          ❌ **FAILED** - Critical compliance violations detected. Merge blocked.
+
+          ### Action Required
+
+          Critical violations must be resolved before this PR can be merged. See details below.
+
+          EOF
+          else
+            cat >> reports/summary.md << 'EOF'
+          ✅ **PASSED** - No critical compliance violations detected.
+
+          EOF
+          fi
+
+          # Add detailed violations
+          if [ -f reports/violations.json ]; then
+            cat >> reports/summary.md << 'EOF'
+          ## Detailed Violations
+
+          EOF
+
+            # Extract and format violations
+            jq -r '
+              [.[].failures[]] |
+              group_by(.msg | if contains("CRITICAL") then "CRITICAL"
+                       elif contains("HIGH") then "HIGH"
+                       elif contains("MEDIUM") then "MEDIUM"
+                       else "LOW" end) |
+              .[] |
+              "### " + (.[0].msg | if contains("CRITICAL") then "🔴 CRITICAL"
+                                   elif contains("HIGH") then "🟠 HIGH"
+                                   elif contains("MEDIUM") then "🟡 MEDIUM"
+                                   else "🔵 LOW" end) + "\n\n" +
+              (map("- **File**: `" + (.metadata.file // "unknown") + "`\n  ```\n  " + .msg + "\n  ```\n") | join("\n"))
+            ' reports/violations.json >> reports/summary.md || echo "No violations to format" >> reports/summary.md
+          fi
+
+          cat >> reports/summary.md << 'EOF'
+
+          ---
+
+          ## Next Steps
+
+          ### For Critical Violations:
+          1. Review the violation details above
+          2. Fix the non-compliant resources in your Terraform code
+          3. Test locally: `conftest test terraform/**/*.tf --policy policies/soc2/`
+          4. Push your fixes to re-trigger validation
+
+          ### For High Violations:
+          - Fix within 24 hours after merge (acceptable for non-production)
+          - Document exception in `docs/exceptions.md` if business-justified
+
+          ### Resources:
+          - [Policy Documentation](../docs/policies-mapping.md)
+          - [Remediation Examples](../terraform/test-infrastructure/README.md)
+          - [SOC2 Control Mapping](../docs/policies-mapping.md#soc2-trust-services-criteria)
+
+          ---
+
+          *Generated by Compliance-as-Code Enforcer*
+          EOF
+
+          echo "::endgroup::"
+
+      - name: Upload compliance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compliance-report
+          path: reports/
+          retention-days: 90
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('reports/summary.md', 'utf8');
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Compliance Validation Report')
+            );
+
+            // Create or update comment
+            const commentBody = summary;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+      - name: Set check status
+        if: always()
+        run: |
+          if [ "${{ steps.conftest.outputs.critical_count }}" -gt 0 ]; then
+            echo "::error::Compliance check FAILED - ${{ steps.conftest.outputs.critical_count }} critical violations"
+            exit 1
+          else
+            echo "::notice::Compliance check PASSED"
+          fi
+
+  terraform-security-scan:
+    name: Additional Security Scans
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform/
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+          soft_fail: true  # Don't fail build, just report
+
+      - name: Upload Checkov results to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: terraform/
+          soft_fail: true
+          format: sarif
+          additional_args: --out tfsec-results.sarif
+
+      - name: Upload tfsec results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
+          category: tfsec

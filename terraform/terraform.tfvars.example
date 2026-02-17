@@ -1,0 +1,51 @@
+# Compliance-as-Code Enforcer - Terraform Variables Example
+# Copy this file to terraform.tfvars and customize for your environment
+
+# AWS Region for deployment
+aws_region = "us-east-1"
+
+# Project naming
+project_name = "compliance-enforcer"
+environment  = "production"
+
+# Tags applied to all resources
+common_tags = {
+  Project     = "compliance-as-code-enforcer"
+  ManagedBy   = "terraform"
+  Environment = "production"
+  CostCenter  = "security"
+  Compliance  = "soc2"
+}
+
+# Scanner Lambda configuration
+scanner_lambda_config = {
+  memory_size = 256 # MB
+  timeout     = 300 # seconds (5 minutes)
+  runtime     = "python3.11"
+}
+
+# Scan schedule (EventBridge cron expression)
+# Default: Daily at 2 AM UTC
+scan_schedule = "cron(0 2 * * ? *)"
+
+# DynamoDB configuration
+dynamodb_billing_mode = "PAY_PER_REQUEST" # or "PROVISIONED"
+
+# S3 Evidence bucket configuration
+evidence_retention_days = 2555 # ~7 years for SOC2 compliance
+
+# Notification settings
+alerts_email = "security-team@example.com"
+
+# CloudWatch Logs retention
+log_retention_days = 90
+
+# Auto-remediation settings
+enable_auto_remediation = false # Set to true to enable automatic fixes
+auto_remediation_dry_run = true # Set to false to apply actual changes
+
+# Compliance frameworks to enforce
+enabled_frameworks = ["soc2", "lgpd"]
+
+# Policy severity levels that block deployment
+block_on_severity = ["CRITICAL", "HIGH"]

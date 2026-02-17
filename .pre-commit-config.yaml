@@ -1,0 +1,55 @@
+# Pre-commit hooks for local compliance validation
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  - repo: local
+    hooks:
+      # OPA policy validation
+      - id: opa-check
+        name: OPA Policy Syntax Check
+        entry: bash -c 'opa check policies/soc2/*.rego'
+        language: system
+        files: \.rego$
+        pass_filenames: false
+
+      - id: opa-test
+        name: OPA Policy Unit Tests
+        entry: bash -c 'opa test policies/'
+        language: system
+        files: \.rego$
+        pass_filenames: false
+
+      # Terraform compliance validation
+      - id: conftest-terraform
+        name: Conftest Policy Validation
+        entry: bash -c 'if ls terraform/**/*.tf 1> /dev/null 2>&1; then conftest test terraform/**/*.tf --policy policies/soc2/ || exit 1; fi'
+        language: system
+        files: \.tf$
+        pass_filenames: false
+
+      - id: terraform-fmt
+        name: Terraform Format
+        entry: terraform fmt
+        language: system
+        files: \.tf$
+        pass_filenames: false
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # Detect secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json

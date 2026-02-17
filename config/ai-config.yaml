@@ -1,0 +1,77 @@
+# AI Assistant Configuration
+# Configure Ollama (local) and Perplexity (cloud) providers
+
+# Ollama Configuration (Local LLM - Free)
+# Recommended for: explain, remediate (frequent tasks)
+ollama:
+  enabled: true
+  base_url: "http://localhost:11434"
+  model: "phi3:mini"  # 2.3GB model, good balance of performance/size
+  # Alternative models:
+  #   - phi3:mini (2.3GB) - Fastest, lowest memory
+  #   - mistral:7b (4.1GB) - Better quality
+  #   - llama3:8b (4.7GB) - Best quality
+  timeout: 120  # seconds
+
+# Perplexity Configuration (Cloud API - Paid)
+# Recommended for: generate, simulate (complex tasks requiring research)
+perplexity:
+  enabled: true
+  api_key: ""  # Set via PERPLEXITY_API_KEY environment variable
+  base_url: "https://api.perplexity.ai"
+  model: "sonar"  # Cost-effective with web search ($0.005/request)
+  # Alternative models:
+  #   - sonar ($0.005/request) - Standard model with web search
+  #   - sonar-pro ($0.05/request) - Higher quality, advanced reasoning
+  #   - sonar-reasoning ($0.01/request) - Optimized for reasoning tasks
+  max_tokens: 4096
+  temperature: 0.2  # Lower = more deterministic
+
+# Cache Configuration
+# Saves API costs by caching responses
+cache:
+  enabled: true
+  directory: ".ai-cache"
+  ttl: 604800  # 7 days in seconds
+
+# Task Routing Strategy
+# Which provider to use for each task type
+task_routing:
+  explain: "perplexity"  # Temporary: testing Perplexity
+  remediate: "perplexity"# Temporary: testing Perplexity
+  generate: "perplexity" # Complex task, needs research
+  simulate: "perplexity" # Complex task, needs research
+
+# Fallback Configuration
+# What to do if primary provider fails
+fallback:
+  enabled: true
+  # If ollama fails, try perplexity (and vice versa)
+  allow_cross_provider: true
+
+# System Prompts (Advanced)
+# Customize AI behavior for each task type
+system_prompts:
+  explain: |
+    You are a compliance and infrastructure security expert.
+    Explain OPA/Rego policies in simple, clear language.
+    Focus on: What the policy checks, Why it matters, What happens if violated.
+    Use analogies when helpful. Avoid jargon unless explaining it.
+
+  remediate: |
+    You are an infrastructure security consultant.
+    Provide actionable remediation advice for policy violations.
+    Include: Root cause, Security impact, Step-by-step fix, Alternative approaches.
+    Always provide working Terraform code examples.
+
+  generate: |
+    You are an expert in writing OPA/Rego policies for infrastructure compliance.
+    Generate production-ready policies with: Clear deny/warn rules, Detailed messages,
+    Remediation guidance, Compliance mappings (SOC2, LGPD, ISO27001).
+    Follow the project's existing policy structure and style.
+
+  simulate: |
+    You are a security testing specialist.
+    Generate diverse, realistic Terraform test scenarios that would trigger violations.
+    Include both obvious violations and edge cases.
+    Provide both compliant and non-compliant examples for comparison.
