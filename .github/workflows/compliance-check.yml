@@ -74,10 +74,10 @@ jobs:
 
           echo "::endgroup::"
 
-          # Parse results (fallback to 0 if violations.json is empty/invalid)
-          VIOLATION_COUNT=$(jq '[.[].failures] | flatten | length' reports/violations.json 2>/dev/null || echo "0")
-          CRITICAL_COUNT=$(jq '[.[].failures[] | select(.msg | contains("CRITICAL"))] | length' reports/violations.json 2>/dev/null || echo "0")
-          HIGH_COUNT=$(jq '[.[].failures[] | select(.msg | contains("HIGH"))] | length' reports/violations.json 2>/dev/null || echo "0")
+          # Parse results - use null-safe traversal since some namespaces output failures=null
+          VIOLATION_COUNT=$(jq '[.[] | .failures // [] | .[]] | length' reports/violations.json 2>/dev/null || echo "0")
+          CRITICAL_COUNT=$(jq '[.[] | .failures // [] | .[] | select(.msg | strings | contains("CRITICAL"))] | length' reports/violations.json 2>/dev/null || echo "0")
+          HIGH_COUNT=$(jq '[.[] | .failures // [] | .[] | select(.msg | strings | contains("HIGH"))] | length' reports/violations.json 2>/dev/null || echo "0")
 
           echo "violation_count=$VIOLATION_COUNT" >> $GITHUB_OUTPUT
           echo "critical_count=$CRITICAL_COUNT" >> $GITHUB_OUTPUT
@@ -138,9 +138,9 @@ jobs:
 
           EOF
 
-            # Extract and format violations
+            # Extract and format violations (null-safe traversal)
             jq -r '
-              [.[].failures[]] |
+              [.[] | .failures // [] | .[] | select(.msg | type == "string")] |
               group_by(.msg | if contains("CRITICAL") then "CRITICAL"
                        elif contains("HIGH") then "HIGH"
                        elif contains("MEDIUM") then "MEDIUM"
@@ -150,7 +150,7 @@ jobs:
                                    elif contains("HIGH") then "🟠 HIGH"
                                    elif contains("MEDIUM") then "🟡 MEDIUM"
                                    else "🔵 LOW" end) + "\n\n" +
-              (map("- **File**: `" + (.metadata.file // "unknown") + "`\n  ```\n  " + .msg + "\n  ```\n") | join("\n"))
+              (map("- " + .msg) | join("\n"))
             ' reports/violations.json >> reports/summary.md || echo "No violations to format" >> reports/summary.md
           fi
 
